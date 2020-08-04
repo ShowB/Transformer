@@ -2,6 +2,7 @@ package com.snet.smore.transformer.main;
 
 import com.snet.smore.common.constant.FileStatusPrefix;
 import com.snet.smore.common.util.EnvManager;
+import com.snet.smore.common.util.FileUtil;
 import com.snet.smore.common.util.StringUtil;
 import com.snet.smore.transformer.converter.ConvertExecutor;
 import lombok.extern.slf4j.Slf4j;
@@ -96,13 +97,16 @@ public class TransformerMain {
             setTotalCnt(0);
             clearCurrCnt();
 
-            List<Path> files = findTargetFiles();
+            Path root = Paths.get(EnvManager.getProperty("transformer.source.file.dir"));
+            String source = EnvManager.getProperty("transformer.source.file.glob");
+            List<Path> files = FileUtil.findFiles(root, source);
 
             if (files.size() < 1)
                 return;
 
             setTotalCnt(files.size());
             log.info("Target files were found: {}", getTotalCnt());
+            long start = System.currentTimeMillis();
 
             Method convertMethod = getConvertMethod();
 
@@ -114,7 +118,10 @@ public class TransformerMain {
             }
 
             try {
-                distributeService.invokeAll(callables);
+                List<Future<String>> futures = distributeService.invokeAll(callables);
+                long end = System.currentTimeMillis();
+                log.info("{} files convert have been completed.", futures.size());
+                log.info("Turn Around Time: " + ((end - start) / 1000) + " (seconds)");
             } catch (InterruptedException e) {
                 log.error("An error occurred while invoking distributed thread.");
             }
@@ -145,31 +152,6 @@ public class TransformerMain {
         return convertMethod;
     }
 
-    private static List<Path> findTargetFiles() {
-        List<Path> files = new ArrayList<>();
-
-        String glob = EnvManager.getProperty("transformer.source.file.glob");
-        if (StringUtil.isBlank(glob))
-            glob = "*.*";
-
-        PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob);
-
-        Path source = Paths.get(EnvManager.getProperty("transformer.source.file.dir"));
-
-        try (Stream<Path> pathStream = Files.find(source, Integer.MAX_VALUE,
-                (p, a) -> matcher.matches(p.getFileName())
-                        && !p.getFileName().toString().startsWith(FileStatusPrefix.COMPLETE.getPrefix())
-                        && !p.getFileName().toString().startsWith(FileStatusPrefix.ERROR.getPrefix())
-                        && !p.getFileName().toString().startsWith(FileStatusPrefix.TEMP.getPrefix())
-                        && !a.isDirectory()
-                        && a.isRegularFile())) {
-            files = pathStream.collect(Collectors.toList());
-        } catch (Exception e) {
-            log.error("An error occurred while finding source files.", e);
-        }
-
-        return files;
-    }
 
     private static void loadConverter() {
         File root = new File("converter");

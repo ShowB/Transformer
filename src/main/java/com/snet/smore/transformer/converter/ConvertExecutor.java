@@ -1,10 +1,7 @@
 package com.snet.smore.transformer.converter;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.snet.smore.common.constant.FileStatusPrefix;
+import com.snet.smore.common.constant.Constant;
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
 import com.snet.smore.transformer.main.TransformerMain;
@@ -15,6 +12,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 @Slf4j
@@ -55,37 +53,55 @@ public class ConvertExecutor implements Callable<String> {
 
             byte[] bytes = new byte[byteSize];
 
-            JsonArray jsonArray = new JsonArray();
-            JsonObject json = new JsonObject();
-            while (buffer.position() < buffer.limit()) {
-                buffer.get(bytes);
-                json = (JsonObject) convertMethod.invoke(convertMethod.getDeclaringClass().newInstance(), bytes);
-                jsonArray.add(json);
-            }
+
+            Object instance = convertMethod.getDeclaringClass().newInstance();
 
             String targetRoot = EnvManager.getProperty("transformer.target.file.dir");
-            Path targetPath = Paths.get(targetRoot, FileStatusPrefix.TEMP.getPrefix() + path.getFileName().toString());
-
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Path targetPath = Paths.get(targetRoot, path.getFileName().toString());
 
             FileChannel targetFileChannel = FileChannel.open(targetPath
                     , StandardOpenOption.CREATE
                     , StandardOpenOption.WRITE
                     , StandardOpenOption.TRUNCATE_EXISTING);
-            targetFileChannel.write(ByteBuffer.wrap(
-                    gson.toJson(
-                            jsonArray
-                    ).getBytes()
-                    )
-            );
+
+            int cursor = 0;
+            int max = buffer.limit() / byteSize;
+            String record;
+            while (buffer.position() < buffer.limit()) {
+                buffer.get(bytes);
+                record = (String) convertMethod.invoke(instance, bytes);
+
+                targetFileChannel.write(ByteBuffer.wrap(record.getBytes()));
+
+                if (++cursor < max)
+                    targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+            }
+
+            long curr = System.currentTimeMillis();
+            String uuid = UUID.randomUUID().toString().substring(0, 8);
+            String targetFileName = originPath.getFileName().toString();
+
+            int maxLength = 13;
+            int length = targetFileName.lastIndexOf(".");
+
+            if (length == -1)
+                length = targetFileName.length();
+
+            length = Math.min(length, maxLength);
+
+
+            targetFileName = targetFileName.substring(0, length);
+            targetFileName = curr + "_" + uuid + "_" + targetFileName + ".txt";
+
+
 
             targetPath = Files.move(targetPath
-                    , Paths.get(targetRoot, originPath.getFileName().toString())
+                    , Paths.get(targetRoot, targetFileName)
                     , StandardCopyOption.REPLACE_EXISTING);
 
             path = FileUtil.changeFileStatus(path, FileStatusPrefix.COMPLETE);
 
-            log.info("Convert was successfully completed. {} --> {}, \t[{} / {}]", originPath, targetPath, TransformerMain.getNextCnt(), TransformerMain.getTotalCnt());
+            log.info("Convert was successfully completed.\n{} --> {}\t[{} / {}]", originPath, targetPath, TransformerMain.getNextCnt(), TransformerMain.getTotalCnt());
             return SUCCESS;
 
         } catch (Exception e) {
