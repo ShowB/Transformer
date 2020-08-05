@@ -6,6 +6,7 @@ import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
 import com.snet.smore.transformer.main.TransformerMain;
 import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONObject;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -57,6 +58,8 @@ public class ConvertExecutor implements Callable<String> {
             Object instance = convertMethod.getDeclaringClass().newInstance();
 
             String targetRoot = EnvManager.getProperty("transformer.target.file.dir");
+            Files.createDirectories(Paths.get(targetRoot));
+
             Path targetPath = Paths.get(targetRoot, path.getFileName().toString());
 
             FileChannel targetFileChannel = FileChannel.open(targetPath
@@ -66,32 +69,34 @@ public class ConvertExecutor implements Callable<String> {
 
             int cursor = 0;
             int max = buffer.limit() / byteSize;
-            String record;
+            JSONObject record;
             while (buffer.position() < buffer.limit()) {
                 buffer.get(bytes);
-                record = (String) convertMethod.invoke(instance, bytes);
+                record = (JSONObject) convertMethod.invoke(instance, bytes);
 
-                targetFileChannel.write(ByteBuffer.wrap(record.getBytes()));
+                targetFileChannel.write(ByteBuffer.wrap(record.toJSONString().getBytes()));
 
                 if (++cursor < max)
                     targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
             }
 
+            targetFileChannel.close();
+
             long curr = System.currentTimeMillis();
             String uuid = UUID.randomUUID().toString().substring(0, 8);
             String targetFileName = originPath.getFileName().toString();
 
-            int maxLength = 13;
+            int fileNameMaxLength = 13;
             int length = targetFileName.lastIndexOf(".");
 
             if (length == -1)
                 length = targetFileName.length();
 
-            length = Math.min(length, maxLength);
+            length = Math.min(length, fileNameMaxLength);
 
 
             targetFileName = targetFileName.substring(0, length);
-            targetFileName = curr + "_" + uuid + "_" + targetFileName + ".txt";
+            targetFileName = Constant.sdf1.format(curr) + "_" + uuid + "_" + targetFileName + ".txt";
 
 
 

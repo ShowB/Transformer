@@ -2,6 +2,7 @@ package com.snet.smore.transformer;
 
 import com.snet.smore.common.constant.Constant;
 import com.snet.smore.common.util.EnvManager;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.util.stream.Stream;
 
 public class FileCompressTest {
     @Test
+    @Ignore
     public void test() throws IOException {
         Path root = Paths.get(EnvManager.getProperty("transformer.target.file.dir"));
         //압축파일을 배치할 경로 생성
@@ -50,6 +52,7 @@ public class FileCompressTest {
     }
 
     @Test
+    @Ignore
     public void test2() {
         Path path = Paths.get(EnvManager.getProperty("transformer.target.file.dir"));
         String a = path.toAbsolutePath() + Constant.FILE_SEPARATOR + "back";

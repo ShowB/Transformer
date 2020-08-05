@@ -1,5 +1,7 @@
 package com.snet.smore.transformer.converter;
 
+import org.json.simple.JSONObject;
+
 public interface SmoreConverter {
-    String convert(byte[] bytes);
+    JSONObject convert(byte[] bytes);
 }
