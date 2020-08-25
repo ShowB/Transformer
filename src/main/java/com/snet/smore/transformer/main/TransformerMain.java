@@ -1,40 +1,38 @@
 package com.snet.smore.transformer.main;
 
-import com.snet.smore.common.constant.FileStatusPrefix;
+import com.snet.smore.common.constant.Constant;
+import com.snet.smore.common.domain.Agent;
+import com.snet.smore.common.util.AgentUtil;
 import com.snet.smore.common.util.EnvManager;
-import com.snet.smore.common.util.FileUtil;
-import com.snet.smore.common.util.StringUtil;
-import com.snet.smore.transformer.converter.ConvertExecutor;
+import com.snet.smore.transformer.module.BinaryConvertModule;
+import com.snet.smore.transformer.module.CsvConvertModule;
+import com.snet.smore.transformer.module.JsonConvertModule;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class TransformerMain {
-    private static boolean isRunning = true;
-    private static boolean isPrevRunning = false;
+    private static String agentType = Constant.AGENT_TYPE_TRANSFORMER;
+    private static String agentName = EnvManager.getProperty("transformer.name");
+
+    private static boolean isRequiredPropertiesUpdate = true;
     private static Integer totalCnt = 0;
     private static Integer currCnt = 0;
 
-    private static int byteSize = 0;
-    private static int threadCntDefault = 50;
-    private static int threadCnt = 0;
+    private static ScheduledExecutorService mainService = Executors.newSingleThreadScheduledExecutor();
 
     public static Integer getTotalCnt() {
         return totalCnt;
     }
 
-    private static void setTotalCnt(Integer totalCnt) {
+    public static void setTotalCnt(Integer totalCnt) {
         TransformerMain.totalCnt = totalCnt;
     }
 
@@ -44,94 +42,49 @@ public class TransformerMain {
         }
     }
 
-    private static void clearCurrCnt() {
+    public static void clearCurrCnt() {
         synchronized (currCnt) {
             currCnt = 0;
         }
     }
 
     public static void main(String[] args) {
-        ScheduledExecutorService mainService = Executors.newSingleThreadScheduledExecutor();
-
-        Runnable runnable = () -> {
-            if (!isRunning) {
-                isPrevRunning = false;
-                return;
-            }
-
-            if (!isPrevRunning) {
-                EnvManager.reload();
-
-                try {
-                    byteSize = Integer.parseInt(EnvManager.getProperty("transformer.source.byte.size"));
-                } catch (Exception e) {
-                    log.info("Cannot convert value [transformer.source.byte.size]. " +
-                            "Job will be restarted.");
-                    return;
-                }
-
-                if (byteSize < 1) {
-                    log.info("Cannot convert value [transformer.source.byte.size]. " +
-                            "Job will be restarted.");
-                    return;
-                }
-
-                try {
-                    threadCnt = Integer.parseInt(EnvManager.getProperty("transformer.thread.count"));
-                } catch (Exception e) {
-                    log.info("Cannot convert value [transformer.thread.count]. " +
-                            "System will be set default value: {}", threadCntDefault);
-                    threadCnt = threadCntDefault;
-                }
-
-                if (threadCnt < 1) {
-                    log.info("Cannot convert value [transformer.thread.count]. " +
-                            "Job will be restarted.");
-                    return;
-                }
-
-                loadConverter();
-
-                isPrevRunning = true;
-            }
-
-            setTotalCnt(0);
-            clearCurrCnt();
-
-            Path root = Paths.get(EnvManager.getProperty("transformer.source.file.dir"));
-            String source = EnvManager.getProperty("transformer.source.file.glob");
-            List<Path> files = FileUtil.findFiles(root, source);
-
-            if (files.size() < 1)
-                return;
-
-            setTotalCnt(files.size());
-            log.info("Target files were found: {}", getTotalCnt());
-            long start = System.currentTimeMillis();
-
-            Method convertMethod = getConvertMethod();
-
-            ExecutorService distributeService = Executors.newFixedThreadPool(threadCnt);
-            List<Callable<String>> callables = new ArrayList<>();
-
-            for (Path p : files) {
-                callables.add(new ConvertExecutor(p, convertMethod, byteSize));
-            }
-
-            try {
-                List<Future<String>> futures = distributeService.invokeAll(callables);
-                long end = System.currentTimeMillis();
-                log.info("{} files convert have been completed.", futures.size());
-                log.info("Turn Around Time: " + ((end - start) / 1000) + " (seconds)");
-            } catch (InterruptedException e) {
-                log.error("An error occurred while invoking distributed thread.");
-            }
-        };
-
-        mainService.scheduleWithFixedDelay(runnable, 5, 1, TimeUnit.SECONDS);
+        mainService.scheduleWithFixedDelay(TransformerMain::runAgent, 1, 1, TimeUnit.SECONDS);
     }
 
-    private static Method getConvertMethod() {
+    private static void runAgent() {
+        final Agent agent = AgentUtil.getAgent(agentType, agentName);
+
+        if (!Constant.YN_Y.equalsIgnoreCase(agent.getUseYn()))
+            return;
+
+        isRequiredPropertiesUpdate = Constant.YN_Y.equalsIgnoreCase(agent.getChangeYn());
+
+        if (isRequiredPropertiesUpdate) {
+            EnvManager.reload();
+            agentName = EnvManager.getProperty("transformer.name");
+
+            log.info("Environment has successfully reloaded.");
+
+            AgentUtil.setChangeYn(agentType, agentName, Constant.YN_N);
+            isRequiredPropertiesUpdate = false;
+        }
+
+        TransformerMain.clearCurrCnt();
+
+        final String type = EnvManager.getProperty("transformer.source.file.type");
+
+        if ("bin".equalsIgnoreCase(type))
+            BinaryConvertModule.execute();
+        else if ("csv".equalsIgnoreCase(type))
+            CsvConvertModule.execute();
+        else if ("json".equalsIgnoreCase(type))
+            JsonConvertModule.execute();
+        else
+            log.error("Cannot convert value [{}]. Thread will be restarted.", "transformer.source.file.type");
+    }
+
+    public static Method getConvertMethod() {
         Method convertMethod = null;
 
         try {
@@ -140,7 +93,6 @@ public class TransformerMain {
             try {
                 Class clazz = Class.forName(fqcn);
                 convertMethod = clazz.getDeclaredMethod("convert", byte[].class);
-//                convertMethod.invoke(clazz.newInstance());
 
             } catch (Exception e) {
                 log.error("An error occurred while calling converter. [{}]", fqcn);
@@ -153,8 +105,7 @@ public class TransformerMain {
         return convertMethod;
     }
 
-
-    private static void loadConverter() {
+    public static void loadConverter() {
         File root = new File("converter");
         File[] files = root.listFiles();
 
@@ -179,4 +130,5 @@ public class TransformerMain {
             }
         }
     }
+
 }

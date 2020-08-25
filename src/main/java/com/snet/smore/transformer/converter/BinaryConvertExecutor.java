@@ -1,11 +1,14 @@
 package com.snet.smore.transformer.converter;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.snet.smore.common.constant.FileStatusPrefix;
 import com.snet.smore.common.constant.Constant;
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
 import com.snet.smore.transformer.main.TransformerMain;
 import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import java.io.IOException;
@@ -17,7 +20,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 
 @Slf4j
-public class ConvertExecutor implements Callable<String> {
+public class BinaryConvertExecutor implements Callable<String> {
     private static final String SUCCESS = "success";
     private static final String FAIL = "fail";
 
@@ -25,7 +28,7 @@ public class ConvertExecutor implements Callable<String> {
     private Method convertMethod;
     private int byteSize;
 
-    public ConvertExecutor(Path path, Method convertMethod, int byteSize) {
+    public BinaryConvertExecutor(Path path, Method convertMethod, int byteSize) {
         this.path = path;
         this.convertMethod = convertMethod;
         this.byteSize = byteSize;
@@ -69,16 +72,21 @@ public class ConvertExecutor implements Callable<String> {
 
             int cursor = 0;
             int max = buffer.limit() / byteSize;
+            JSONArray array = new JSONArray();
             JSONObject record;
             while (buffer.position() < buffer.limit()) {
                 buffer.get(bytes);
                 record = (JSONObject) convertMethod.invoke(instance, bytes);
 
+//                array.add(record);
                 targetFileChannel.write(ByteBuffer.wrap(record.toJSONString().getBytes()));
 
                 if (++cursor < max)
                     targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
             }
+
+//            System.out.println(array.size());
+//            targetFileChannel.write(ByteBuffer.wrap(array.toJSONString().getBytes()));
 
             targetFileChannel.close();
 
