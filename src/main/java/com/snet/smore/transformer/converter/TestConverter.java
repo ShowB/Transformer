@@ -3,10 +3,16 @@ package com.snet.smore.transformer.converter;
 
 import org.json.simple.JSONObject;
 
-public class TestConverter implements SmoreConverter {
+import java.nio.file.Path;
+
+public class TestConverter extends AbstractBinaryConverter {
+
+    TestConverter(Path path) throws Exception {
+        super(path);
+    }
 
     @Override
-    public JSONObject convert(byte[] bytes) {
+    public JSONObject convertOneRow(byte[] bytes) {
         JSONObject json = new JSONObject();
         json.put("test", "TestConverter");
 

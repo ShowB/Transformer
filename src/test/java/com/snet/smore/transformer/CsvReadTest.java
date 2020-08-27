@@ -5,6 +5,7 @@ import au.com.bytecode.opencsv.bean.ColumnPositionMappingStrategy;
 import au.com.bytecode.opencsv.bean.CsvToBean;
 import com.snet.smore.common.util.EnvManager;
 import org.json.simple.JSONObject;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.FileReader;
@@ -19,6 +20,7 @@ import java.util.*;
 
 public class CsvReadTest {
     @Test
+    @Ignore
     public void test() throws IOException {
         Path path = Paths.get("D:/total.csv");
         String tableName = EnvManager.getProperty("transformer.target.table-name");

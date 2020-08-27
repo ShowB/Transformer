@@ -2,11 +2,10 @@ package com.snet.smore.transformer.module;
 
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
-import com.snet.smore.transformer.converter.BinaryConvertExecutor;
+import com.snet.smore.transformer.executor.BinaryConvertExecutor;
 import com.snet.smore.transformer.main.TransformerMain;
 import lombok.extern.slf4j.Slf4j;
 
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -49,13 +48,11 @@ public class BinaryConvertModule {
         log.info("Target files were found: {}", TransformerMain.getTotalCnt());
         long start = System.currentTimeMillis();
 
-        Method convertMethod = TransformerMain.getConvertMethod();
-
         ExecutorService distributeService = Executors.newFixedThreadPool(threadCnt);
         List<Callable<String>> callables = new ArrayList<>();
 
         for (Path p : files) {
-            callables.add(new BinaryConvertExecutor(p, convertMethod, byteSize));
+            callables.add(new BinaryConvertExecutor(p));
         }
 
         try {

@@ -23,6 +23,7 @@ public class TransformerMain {
     private static String agentName = EnvManager.getProperty("transformer.name");
 
     private static boolean isRequiredPropertiesUpdate = true;
+    private static boolean isFirstRun = true;
     private static Integer totalCnt = 0;
     private static Integer currCnt = 0;
 
@@ -60,13 +61,16 @@ public class TransformerMain {
 
         isRequiredPropertiesUpdate = Constant.YN_Y.equalsIgnoreCase(agent.getChangeYn());
 
-        if (isRequiredPropertiesUpdate) {
+        if (isRequiredPropertiesUpdate || isFirstRun) {
             EnvManager.reload();
             agentName = EnvManager.getProperty("transformer.name");
+            loadConverter();
 
             log.info("Environment has successfully reloaded.");
 
-            AgentUtil.setChangeYn(agentType, agentName, Constant.YN_N);
+            if ("Y".equalsIgnoreCase(agent.getChangeYn()))
+                AgentUtil.setChangeYn(agentType, agentName, Constant.YN_N);
+
             isRequiredPropertiesUpdate = false;
         }
 
@@ -82,27 +86,9 @@ public class TransformerMain {
             JsonConvertModule.execute();
         else
             log.error("Cannot convert value [{}]. Thread will be restarted.", "transformer.source.file.type");
-    }
 
-    public static Method getConvertMethod() {
-        Method convertMethod = null;
-
-        try {
-            String fqcn = EnvManager.getProperty("transformer.converter.fqcn");
-
-            try {
-                Class clazz = Class.forName(fqcn);
-                convertMethod = clazz.getDeclaredMethod("convert", byte[].class);
-
-            } catch (Exception e) {
-                log.error("An error occurred while calling converter. [{}]", fqcn);
-            }
-
-        } catch (Exception e) {
-            log.error("Unknown error occurred. Thread will be restarted.", e);
-        }
-
-        return convertMethod;
+        if (isFirstRun)
+            isFirstRun = false;
     }
 
     public static void loadConverter() {
