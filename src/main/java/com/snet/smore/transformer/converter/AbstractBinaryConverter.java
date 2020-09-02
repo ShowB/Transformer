@@ -36,6 +36,7 @@ public abstract class AbstractBinaryConverter {
         buffer = ByteBuffer.allocateDirect((int) Files.size(path));
         channel.read(buffer);
         buffer.flip();
+        channel.close();
 
         bytes = new byte[this.byteSize];
     }
@@ -51,18 +52,19 @@ public abstract class AbstractBinaryConverter {
 
         if (buffer.position() + byteSize <= buffer.limit()) {
             buffer.get(bytes);
-
-            if (buffer.position() + byteSize <= buffer.limit()) {
-                try {
-                    channel.close();
-                } catch (IOException e) {
-                    log.error("An error occurred while closing file channel. [{}]", path, e);
-                }
-            }
-
             return convertOneRow(bytes);
+        } else {
+            return null;
         }
 
-        return null;
+    }
+
+    protected void setByteSize(int byteSize) {
+        this.byteSize = byteSize;
+        this.bytes = new byte[byteSize];
+    }
+
+    protected int getByteSize() {
+        return this.byteSize;
     }
 }

@@ -64,4 +64,11 @@ public class DateFormatTest {
 
         System.out.println(cnt);
     }
+
+    @Test
+    @Ignore
+    public void test3() {
+        System.out.println(System.currentTimeMillis() + "");
+        System.out.println(sdf.format(System.currentTimeMillis()));
+    }
 }

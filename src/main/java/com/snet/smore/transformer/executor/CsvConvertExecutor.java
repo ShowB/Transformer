@@ -37,10 +37,7 @@ public class CsvConvertExecutor extends AbstractExecutor {
             return Constant.CALLABLE_RESULT_FAIL;
         }
 
-        String tableName = EnvManager.getProperty("transformer.target.table-name", "TABLE_NAME");
-
         JSONObject row = new JSONObject();
-        JSONObject main = new JSONObject();
         List<String> keys = new LinkedList<>();
 
         try (FileInputStream fis = new FileInputStream(path.toFile());
@@ -58,7 +55,6 @@ public class CsvConvertExecutor extends AbstractExecutor {
                 if (lineCnt == 0) {
                     keys.addAll(Arrays.asList(line));
                 } else {
-                    main.clear();
                     row.clear();
                     for (int i = 0; i < line.length; i++) {
                         try {
@@ -67,8 +63,7 @@ public class CsvConvertExecutor extends AbstractExecutor {
                             log.error(ex.getMessage() + " {}", lineCnt);
                         }
                     }
-                    main.put(tableName, row.clone());
-                    targetFileChannel.write(ByteBuffer.wrap(main.toJSONString().getBytes()));
+                    targetFileChannel.write(ByteBuffer.wrap(row.toJSONString().getBytes()));
                     targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
                 }
                 lineCnt++;

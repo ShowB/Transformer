@@ -4,6 +4,7 @@ import com.snet.smore.common.constant.Constant;
 import com.snet.smore.common.constant.FileStatusPrefix;
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
+import com.snet.smore.common.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -31,10 +32,25 @@ public abstract class AbstractExecutor implements Callable<String> {
     public abstract String call();
 
     protected void changeNewFile() {
+        changeNewFileProcess(EnvManager.getProperty("transformer.target.file.dir"));
+    }
+
+    protected void changeNewFile(String targetRoot) {
+        if (StringUtil.isBlank(targetRoot))
+            changeNewFile();
+        else
+            changeNewFileProcess(targetRoot);
+    }
+
+    private void changeNewFileProcess(String targetRoot) {
+        try {
+            Files.createDirectories(Paths.get(targetRoot));
+        } catch (Exception e) {
+            log.error("An error while creating directory. [{}]", targetRoot, e);
+        }
+
         closeChannel();
         closeFile();
-
-        String targetRoot = EnvManager.getProperty("transformer.target.file.dir");
 
         long curr = System.currentTimeMillis();
         String uuid = UUID.randomUUID().toString().substring(0, 8);
@@ -49,7 +65,7 @@ public abstract class AbstractExecutor implements Callable<String> {
         length = Math.min(length, fileNameMaxLength);
 
         targetFileName = targetFileName.substring(0, length);
-        targetFileName = FileStatusPrefix.TEMP.getPrefix() + Constant.sdf1.format(curr) + "_" + uuid + "_" + targetFileName + ".txt";
+        targetFileName = FileStatusPrefix.TEMP.getPrefix() + curr + "_" + uuid + "_" + targetFileName + ".txt";
 
         targetPath = Paths.get(targetRoot, targetFileName);
 
@@ -72,6 +88,8 @@ public abstract class AbstractExecutor implements Callable<String> {
                 log.error("An error occurred while changing file name. {}", targetPath, e);
             }
         }
+
+        targetPath = null;
     }
 
     protected void closeChannel() {
@@ -82,6 +100,8 @@ public abstract class AbstractExecutor implements Callable<String> {
                 log.error("An error occurred while closing file channel.", e);
             }
         }
+
+        targetFileChannel = null;
     }
 
     protected String error(Exception e) {
