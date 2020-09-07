@@ -13,8 +13,8 @@ import org.json.simple.JSONObject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.security.KeyStore;
+import java.util.*;
 
 @Slf4j
 public class BinaryConvertExecutor extends AbstractExecutor {
@@ -42,22 +42,53 @@ public class BinaryConvertExecutor extends AbstractExecutor {
                 return Constant.CALLABLE_RESULT_FAIL;
             }
 
+            String targetRoot;
+            String csvLine;
+            int rowCnt = 0;
+            JSONObject json;
+            AbstractBinaryConverter converter;
+
             for (Class clazz : classes) {
-                AbstractBinaryConverter converter
-                        = (AbstractBinaryConverter) clazz.getConstructor(Path.class).newInstance(path);
+                converter = (AbstractBinaryConverter) clazz.getConstructor(Path.class).newInstance(path);
 
-                int lineCnt = 0;
-                JSONObject json;
-
-                String targetRoot = EnvManager.getProperty("transformer.target.file.dir." + clazz.getName());
+                targetRoot = EnvManager.getProperty("transformer.target.file.dir." + clazz.getName());
                 changeNewFile(targetRoot);
-                while ((json = converter.next()) != null) {
-                    targetFileChannel.write(ByteBuffer.wrap(json.toJSONString().getBytes()));
-                    targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
 
-                    if (++lineCnt == maxLine)
+                while (converter.hasNext()) {
+                    json = converter.next();
+
+                    if (json == null)
+                        continue;
+
+                    if ("csv".equalsIgnoreCase(targetFileType)) {
+                        if (rowCnt == 0) {
+                            csvLine = generateCsvHeader(json);
+                            targetFileChannel.write(ByteBuffer.wrap(csvLine.getBytes()));
+                            targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+                        }
+
+                        csvLine = generateCsvLine(json);
+                        targetFileChannel.write(ByteBuffer.wrap(csvLine.getBytes()));
+
+                        if (converter.hasNext())
+                            targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+
+                    } else if ("json".equalsIgnoreCase(targetFileType)) {
+                        targetFileChannel.write(ByteBuffer.wrap(json.toJSONString().getBytes()));
+
+                        if (converter.hasNext()) {
+                            targetFileChannel.write(ByteBuffer.wrap(",".getBytes()));
+                            targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+                        }
+                    }
+
+                    if (++rowCnt == maxLine) {
+                        rowCnt = 0;
                         changeNewFile(targetRoot);
+                    }
                 }
+
+                rowCnt = 0;
 
                 closeChannel();
                 closeFile();
@@ -65,11 +96,48 @@ public class BinaryConvertExecutor extends AbstractExecutor {
             }
             log.info("Convert was successfully completed. [{}]\t[{} / {}]", originFileName, TransformerMain.getNextCnt(), TransformerMain.getTotalCnt());
 
+            try {
+                path = FileUtil.changeFileStatus(path, FileStatusPrefix.COMPLETE);
+            } catch (IOException e) {
+                log.error("File is using by another process. {}", path);
+                return Constant.CALLABLE_RESULT_FAIL;
+            }
+
             return Constant.CALLABLE_RESULT_SUCCESS;
 
         } catch (Exception e) {
             return error(e);
         }
+    }
+
+    private String generateCsvHeader(JSONObject json) {
+        Iterator<Map.Entry> it = json.entrySet().iterator();
+
+        StringBuilder sb = new StringBuilder();
+
+        while (it.hasNext()) {
+            sb.append(it.next().getKey());
+
+            if (it.hasNext())
+                sb.append(EnvManager.getProperty("transformer.target.file.csv.separator", ","));
+        }
+
+        return sb.toString();
+    }
+
+    private String generateCsvLine(JSONObject json) {
+        Iterator<Map.Entry> it = json.entrySet().iterator();
+
+        StringBuilder sb = new StringBuilder();
+
+        while (it.hasNext()) {
+            sb.append(it.next().getValue());
+
+            if (it.hasNext())
+                sb.append(EnvManager.getProperty("transformer.target.file.csv.separator", ","));
+        }
+
+        return sb.toString();
     }
 
     private Class getConvertClass() throws Exception {

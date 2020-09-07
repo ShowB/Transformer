@@ -8,6 +8,7 @@ import com.snet.smore.common.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,10 +23,12 @@ public abstract class AbstractExecutor implements Callable<String> {
     protected String originFileName;
     protected Path targetPath;
     protected FileChannel targetFileChannel;
+    protected String targetFileType;
 
     public AbstractExecutor(Path path) {
         this.path = path;
         this.originFileName = path.getFileName().toString();
+        this.targetFileType = EnvManager.getProperty("transformer.target.file.type", "json");
     }
 
     @Override
@@ -74,13 +77,16 @@ public abstract class AbstractExecutor implements Callable<String> {
                     , StandardOpenOption.CREATE
                     , StandardOpenOption.WRITE
                     , StandardOpenOption.TRUNCATE_EXISTING);
+
+            if ("json".equalsIgnoreCase(targetFileType))
+                targetFileChannel.write(ByteBuffer.wrap("[".getBytes()));
         } catch (IOException e) {
-            log.error("An error occurred while opening file channel.", e);
+            error(e);
         }
     }
 
     protected void closeFile() {
-        if (targetPath != null) {
+        if (targetPath != null && Files.isRegularFile(targetPath)) {
             try {
                 targetPath = FileUtil.changeFileStatus(targetPath, null);
                 log.info("File was successfully created. [{}]", targetPath);
@@ -93,8 +99,13 @@ public abstract class AbstractExecutor implements Callable<String> {
     }
 
     protected void closeChannel() {
-        if (targetFileChannel != null) {
+        if (targetFileChannel != null && targetFileChannel.isOpen()) {
             try {
+                if (targetFileChannel.size() < 1)
+                    Files.delete(targetPath);
+                else if ("json".equalsIgnoreCase(targetFileType))
+                    targetFileChannel.write(ByteBuffer.wrap("]".getBytes()));
+
                 targetFileChannel.close();
             } catch (IOException e) {
                 log.error("An error occurred while closing file channel.", e);

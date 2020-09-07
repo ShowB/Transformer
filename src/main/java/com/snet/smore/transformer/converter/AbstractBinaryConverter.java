@@ -16,7 +16,7 @@ import java.util.List;
 
 @Slf4j
 public abstract class AbstractBinaryConverter {
-    private Path path;
+    protected Path path;
     private FileChannel channel;
     private ByteBuffer buffer;
     private int byteSize;
@@ -42,6 +42,10 @@ public abstract class AbstractBinaryConverter {
     }
 
     public abstract JSONObject convertOneRow(byte[] bytes);
+
+    public boolean hasNext() {
+        return buffer.position() + byteSize <= buffer.limit();
+    }
 
     public JSONObject next() {
 
