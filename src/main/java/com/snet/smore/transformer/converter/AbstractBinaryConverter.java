@@ -2,6 +2,7 @@ package com.snet.smore.transformer.converter;
 
 import com.snet.smore.common.util.EnvManager;
 import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import java.io.IOException;
@@ -16,7 +17,7 @@ import java.util.List;
 
 @Slf4j
 public abstract class AbstractBinaryConverter {
-    protected Path path;
+    private Path path;
     private FileChannel channel;
     private ByteBuffer buffer;
     private int byteSize;
@@ -25,12 +26,12 @@ public abstract class AbstractBinaryConverter {
     public AbstractBinaryConverter(Path path) throws Exception {
         this.path = path;
 
-        byteSize = EnvManager.getProperty("transformer.source.byte.size", -1);
+//        byteSize = EnvManager.getProperty("transformer.source.byte.size", -1);
 
-        if (byteSize < 1) {
-            log.error("Cannot convert value [transformer.source.byte.size]. ");
-            throw new Exception();
-        }
+//        if (byteSize < 1) {
+//            log.error("Cannot convert value [transformer.source.byte.size]. ");
+//            throw new Exception();
+//        }
 
         channel = FileChannel.open(this.path, StandardOpenOption.READ);
         buffer = ByteBuffer.allocateDirect((int) Files.size(path));
@@ -41,13 +42,22 @@ public abstract class AbstractBinaryConverter {
         bytes = new byte[this.byteSize];
     }
 
-    public abstract JSONObject convertOneRow(byte[] bytes);
+    public abstract JSONArray convertOneRow(byte[] bytes);
 
     public boolean hasNext() {
+        if (byteSize == 0) {
+            log.error("Must set byteSize in Constructor of Converter via method: setByteSize().");
+            return false;
+        }
+
         return buffer.position() + byteSize <= buffer.limit();
     }
 
-    public JSONObject next() {
+    public JSONArray next() {
+        if (byteSize == 0) {
+            log.error("Must set byteSize in Constructor of Converter via method: setByteSize().");
+            return null;
+        }
 
         if (buffer.limit() < byteSize) {
             return null;
@@ -70,5 +80,9 @@ public abstract class AbstractBinaryConverter {
 
     protected int getByteSize() {
         return this.byteSize;
+    }
+
+    public Path getPath() {
+        return this.path;
     }
 }

@@ -24,11 +24,16 @@ public abstract class AbstractExecutor implements Callable<String> {
     protected Path targetPath;
     protected FileChannel targetFileChannel;
     protected String targetFileType;
+    private String targetFileExt;
 
     public AbstractExecutor(Path path) {
         this.path = path;
         this.originFileName = path.getFileName().toString();
         this.targetFileType = EnvManager.getProperty("transformer.target.file.type", "json");
+        this.targetFileExt = EnvManager.getProperty("transformer.target.file.ext");
+        if (!this.targetFileExt.startsWith(".")) {
+            targetFileExt = "." + targetFileExt;
+        }
     }
 
     @Override
@@ -68,7 +73,7 @@ public abstract class AbstractExecutor implements Callable<String> {
         length = Math.min(length, fileNameMaxLength);
 
         targetFileName = targetFileName.substring(0, length);
-        targetFileName = FileStatusPrefix.TEMP.getPrefix() + curr + "_" + uuid + "_" + targetFileName + ".txt";
+        targetFileName = FileStatusPrefix.TEMP.getPrefix() + curr + "_" + uuid + "_" + targetFileName + targetFileExt;
 
         targetPath = Paths.get(targetRoot, targetFileName);
 

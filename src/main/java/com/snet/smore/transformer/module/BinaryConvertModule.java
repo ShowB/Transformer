@@ -1,31 +1,26 @@
 package com.snet.smore.transformer.module;
 
+import com.snet.smore.common.constant.FileStatusPrefix;
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
+import com.snet.smore.common.util.StringUtil;
 import com.snet.smore.transformer.executor.BinaryConvertExecutor;
 import com.snet.smore.transformer.main.TransformerMain;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class BinaryConvertModule {
     public static void execute() {
-        int byteSize = EnvManager.getProperty("transformer.source.byte.size", -1);
-
-        if (byteSize < 1) {
-            log.error("Cannot convert value [transformer.source.byte.size]. " +
-                    "Job will be restarted.");
-            return;
-        }
-
         int threadCnt = EnvManager.getProperty("transformer.thread.count", 10);
 
         if (threadCnt < 1) {

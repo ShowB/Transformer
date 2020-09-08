@@ -8,6 +8,7 @@ import com.snet.smore.common.util.StringUtil;
 import com.snet.smore.transformer.converter.AbstractBinaryConverter;
 import com.snet.smore.transformer.main.TransformerMain;
 import lombok.extern.slf4j.Slf4j;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import java.io.IOException;
@@ -45,6 +46,7 @@ public class BinaryConvertExecutor extends AbstractExecutor {
             String targetRoot;
             String csvLine;
             int rowCnt = 0;
+            JSONArray array;
             JSONObject json;
             AbstractBinaryConverter converter;
 
@@ -55,36 +57,54 @@ public class BinaryConvertExecutor extends AbstractExecutor {
                 changeNewFile(targetRoot);
 
                 while (converter.hasNext()) {
-                    json = converter.next();
+                    array = converter.next();
 
-                    if (json == null)
+                    if (array == null || array.size() == 0)
                         continue;
 
-                    if ("csv".equalsIgnoreCase(targetFileType)) {
-                        if (rowCnt == 0) {
-                            csvLine = generateCsvHeader(json);
+                    for (int i = 0; i < array.size(); i++) {
+                        json = (JSONObject) array.get(i);
+
+                        if (json == null || json.size() == 0)
+                            continue;
+
+                        if ("csv".equalsIgnoreCase(targetFileType)) {
+                            if (rowCnt == 0) {
+                                csvLine = generateCsvHeader(json);
+                                targetFileChannel.write(ByteBuffer.wrap(csvLine.getBytes()));
+                                targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+                            }
+
+                            if (rowCnt > 0)
+                                targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+
+                            csvLine = generateCsvLine(json);
                             targetFileChannel.write(ByteBuffer.wrap(csvLine.getBytes()));
-                            targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+
+//                            if (path.getFileName().toString().contains("1599203484180_f38ba2bd") && rowCnt > 1200)
+//                                System.out.println("here!!");
+
+//                            if (converter.hasNext() || i + 1 < array.size())
+//                                targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+
+                        } else if ("json".equalsIgnoreCase(targetFileType)) {
+                            if (rowCnt > 0) {
+                                targetFileChannel.write(ByteBuffer.wrap(",".getBytes()));
+                                targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+                            }
+
+                            targetFileChannel.write(ByteBuffer.wrap(json.toJSONString().getBytes()));
+
+//                            if (converter.hasNext()) {
+//                                targetFileChannel.write(ByteBuffer.wrap(",".getBytes()));
+//                                targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+//                            }
                         }
 
-                        csvLine = generateCsvLine(json);
-                        targetFileChannel.write(ByteBuffer.wrap(csvLine.getBytes()));
-
-                        if (converter.hasNext())
-                            targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
-
-                    } else if ("json".equalsIgnoreCase(targetFileType)) {
-                        targetFileChannel.write(ByteBuffer.wrap(json.toJSONString().getBytes()));
-
-                        if (converter.hasNext()) {
-                            targetFileChannel.write(ByteBuffer.wrap(",".getBytes()));
-                            targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
+                        if (++rowCnt == maxLine) {
+                            rowCnt = 0;
+                            changeNewFile(targetRoot);
                         }
-                    }
-
-                    if (++rowCnt == maxLine) {
-                        rowCnt = 0;
-                        changeNewFile(targetRoot);
                     }
                 }
 

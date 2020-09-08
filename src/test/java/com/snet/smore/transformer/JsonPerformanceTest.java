@@ -115,4 +115,24 @@ public class JsonPerformanceTest {
 
         System.out.println(sb);
     }
+
+    @Test
+    @Ignore
+    public void test5() {
+        JSONArray array = new JSONArray();
+        JSONArray array2 = new JSONArray();
+        JSONObject json = new JSONObject();
+
+        json.put("a", "aaa");
+        json.put("b", "bbb");
+
+        array.add(json);
+        array2.add(json);
+        array.add(array2);
+
+
+
+        System.out.println(array);
+
+    }
 }
