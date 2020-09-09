@@ -43,9 +43,6 @@ public class FileCompressTest {
         //압축파일 파일 시스템생성
         try (FileSystem zipfs = FileSystems.newFileSystem(zipFileUri, zipProp)) {
             List<Path> targets = findCmplFiles(sourceRoot);
-//            List<Path> targets = Files.list(sourceRoot).filter(i -> !Files.isDirectory(i)).collect(Collectors.toList());
-//            List<Path> targets = Files.find(root, Integer.MAX_VALUE, (p, a) -> !a.isDirectory() && !p.getParent().equals(zipRoot))
-//                    .collect(Collectors.toList());
 
             int i = 0;
             Path temp;
