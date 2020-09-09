@@ -28,12 +28,12 @@ public class FileCompressTest {
 
         //압축파일을 배치할 경로 생성
         String now = Constant.sdf1.format(System.currentTimeMillis());
-        final String zipPath = targetRoot.toAbsolutePath().toString();
-        final Path zipRoot = Paths.get(zipPath);
+        String zipPath = targetRoot.toAbsolutePath().toString();
+        Path zipRoot = Paths.get(zipPath);
         Files.createDirectories(zipRoot);
 
         //압축 파일 생성 옵션(새로생성, 파일명 캐릭터셋등)
-        final Map<String, String> zipProp = new HashMap<>();
+        Map<String, String> zipProp = new HashMap<>();
         zipProp.put("create", Boolean.toString(true));
         zipProp.put("encoding", Charset.defaultCharset().displayName());
 
@@ -42,7 +42,7 @@ public class FileCompressTest {
 
         //압축파일 파일 시스템생성
         try (FileSystem zipfs = FileSystems.newFileSystem(zipFileUri, zipProp)) {
-            List<Path> targets = findCmplFiles();
+            List<Path> targets = findCmplFiles(sourceRoot);
 //            List<Path> targets = Files.list(sourceRoot).filter(i -> !Files.isDirectory(i)).collect(Collectors.toList());
 //            List<Path> targets = Files.find(root, Integer.MAX_VALUE, (p, a) -> !a.isDirectory() && !p.getParent().equals(zipRoot))
 //                    .collect(Collectors.toList());
@@ -85,17 +85,15 @@ public class FileCompressTest {
         System.out.println(a.replaceAll("\\\\", "/"));
     }
 
-    public List<Path> findCmplFiles() {
+    public List<Path> findCmplFiles(Path root) {
         List<Path> files = new ArrayList<>();
 
         String glob = EnvManager.getProperty("transformer.source.file.glob", "*.*");
-        Path root = Paths.get(EnvManager.getProperty("transformer.source.file.dir"));
-
         PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob);
 
         try (Stream<Path> pathStream = Files.find(root, Integer.MAX_VALUE,
                 (p, a) -> matcher.matches(p.getFileName())
-                        /*&& p.getFileName().toString().startsWith(FileStatusPrefix.COMPLETE.getPrefix())*/
+                        && p.getFileName().toString().startsWith(FileStatusPrefix.COMPLETE.getPrefix())
                         && !a.isDirectory()
                         && a.isRegularFile())) {
             files = pathStream.collect(Collectors.toList());

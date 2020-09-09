@@ -54,41 +54,46 @@ public class TransformerMain {
     }
 
     private static void runAgent() {
-        final Agent agent = AgentUtil.getAgent(agentType, agentName);
+        try {
+            final Agent agent = AgentUtil.getAgent(agentType, agentName);
 
-        if (!Constant.YN_Y.equalsIgnoreCase(agent.getUseYn()))
-            return;
+            if (!Constant.YN_Y.equalsIgnoreCase(agent.getUseYn()))
+                return;
 
-        isRequiredPropertiesUpdate = Constant.YN_Y.equalsIgnoreCase(agent.getChangeYn());
+            isRequiredPropertiesUpdate = Constant.YN_Y.equalsIgnoreCase(agent.getChangeYn());
 
-        if (isRequiredPropertiesUpdate || isFirstRun) {
-            EnvManager.reload();
-            agentName = EnvManager.getProperty("transformer.name");
-            loadConverter();
+            if (isRequiredPropertiesUpdate || isFirstRun) {
+                EnvManager.reload();
+                agentName = EnvManager.getProperty("transformer.name");
+                loadConverter();
 
-            log.info("Environment has successfully reloaded.");
+                log.info("Environment has successfully reloaded.");
 
-            if ("Y".equalsIgnoreCase(agent.getChangeYn()))
-                AgentUtil.setChangeYn(agentType, agentName, Constant.YN_N);
+                if ("Y".equalsIgnoreCase(agent.getChangeYn()))
+                    AgentUtil.setChangeYn(agentType, agentName, Constant.YN_N);
 
-            isRequiredPropertiesUpdate = false;
+                isRequiredPropertiesUpdate = false;
+            }
+
+            TransformerMain.clearCurrCnt();
+
+            final String type = EnvManager.getProperty("transformer.source.file.type");
+
+            if ("bin".equalsIgnoreCase(type))
+                BinaryConvertModule.execute();
+            else if ("csv".equalsIgnoreCase(type))
+                CsvConvertModule.execute();
+            else if ("json".equalsIgnoreCase(type))
+                JsonConvertModule.execute();
+            else
+                log.error("Cannot convert value [{}]. Thread will be restarted.", "transformer.source.file.type");
+
+            if (isFirstRun)
+                isFirstRun = false;
+
+        } catch (Exception e) {
+            log.error("An error occurred while thread processing. It will be restarted : {}", e.getMessage());
         }
-
-        TransformerMain.clearCurrCnt();
-
-        final String type = EnvManager.getProperty("transformer.source.file.type");
-
-        if ("bin".equalsIgnoreCase(type))
-            BinaryConvertModule.execute();
-        else if ("csv".equalsIgnoreCase(type))
-            CsvConvertModule.execute();
-        else if ("json".equalsIgnoreCase(type))
-            JsonConvertModule.execute();
-        else
-            log.error("Cannot convert value [{}]. Thread will be restarted.", "transformer.source.file.type");
-
-        if (isFirstRun)
-            isFirstRun = false;
     }
 
     public static void loadConverter() {
