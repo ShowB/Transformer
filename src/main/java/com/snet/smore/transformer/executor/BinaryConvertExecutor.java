@@ -14,8 +14,10 @@ import org.json.simple.JSONObject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.security.KeyStore;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 public class BinaryConvertExecutor extends AbstractExecutor {
@@ -81,12 +83,6 @@ public class BinaryConvertExecutor extends AbstractExecutor {
                             csvLine = generateCsvLine(json);
                             targetFileChannel.write(ByteBuffer.wrap(csvLine.getBytes()));
 
-//                            if (path.getFileName().toString().contains("1599203484180_f38ba2bd") && rowCnt > 1200)
-//                                System.out.println("here!!");
-
-//                            if (converter.hasNext() || i + 1 < array.size())
-//                                targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
-
                         } else if ("json".equalsIgnoreCase(targetFileType)) {
                             if (rowCnt > 0) {
                                 targetFileChannel.write(ByteBuffer.wrap(",".getBytes()));
@@ -94,11 +90,6 @@ public class BinaryConvertExecutor extends AbstractExecutor {
                             }
 
                             targetFileChannel.write(ByteBuffer.wrap(json.toJSONString().getBytes()));
-
-//                            if (converter.hasNext()) {
-//                                targetFileChannel.write(ByteBuffer.wrap(",".getBytes()));
-//                                targetFileChannel.write(ByteBuffer.wrap(Constant.LINE_SEPARATOR.getBytes()));
-//                            }
                         }
 
                         if (++rowCnt == maxLine) {

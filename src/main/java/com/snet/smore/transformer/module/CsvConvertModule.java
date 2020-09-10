@@ -18,7 +18,7 @@ import java.util.concurrent.Future;
 @Slf4j
 public class CsvConvertModule {
     public static void execute() {
-        int threadCnt = EnvManager.getProperty("transformer.thread.count", 10);
+        int threadCnt = EnvManager.getProperty("transformer.thread.count", 1);
 
         if (threadCnt < 1) {
             log.error("Cannot convert value [transformer.thread.count]. " +

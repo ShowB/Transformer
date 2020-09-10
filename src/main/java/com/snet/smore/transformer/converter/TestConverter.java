@@ -23,4 +23,9 @@ public class TestConverter extends AbstractBinaryConverter {
         array.add(json);
         return array;
     }
+
+    @Override
+    public void correct() {
+
+    }
 }
