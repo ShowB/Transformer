@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,7 +62,7 @@ public class TransformerMain {
 
     public static void main(String[] args) {
         mainService.scheduleWithFixedDelay(TransformerMain::runAgent, 1, 1, TimeUnit.SECONDS);
-        fileCompressService.scheduleWithFixedDelay(TransformerMain::runFileCompress, 60, EnvManager.getProperty("transformer.backup.interval", 86400), TimeUnit.SECONDS);
+        fileCompressService.scheduleWithFixedDelay(TransformerMain::runFileCompress, 3600, EnvManager.getProperty("transformer.backup.interval", 86400), TimeUnit.SECONDS);
     }
 
     private static void runAgent() {

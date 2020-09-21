@@ -106,10 +106,16 @@ public abstract class AbstractExecutor implements Callable<String> {
     protected void closeChannel() {
         if (targetFileChannel != null && targetFileChannel.isOpen()) {
             try {
-                if (targetFileChannel.size() < 1)
-                    Files.delete(targetPath);
-                else if ("json".equalsIgnoreCase(targetFileType))
-                    targetFileChannel.write(ByteBuffer.wrap("]".getBytes()));
+                if ("json".equalsIgnoreCase(targetFileType)) {
+                    if (targetFileChannel.size() > 1)
+                        targetFileChannel.write(ByteBuffer.wrap("]".getBytes()));
+                    else
+                        Files.delete(targetPath);
+
+                } else {
+                    if (targetFileChannel.size() < 1)
+                        Files.delete(targetPath);
+                }
 
                 targetFileChannel.close();
             } catch (IOException e) {
