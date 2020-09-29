@@ -17,7 +17,7 @@ import java.util.concurrent.Future;
 
 @Slf4j
 public class BinaryConvertModule {
-    public static void execute() {
+    public void execute() {
         TransformerMain.setTotalCnt(0);
         TransformerMain.clearCurrCnt();
 

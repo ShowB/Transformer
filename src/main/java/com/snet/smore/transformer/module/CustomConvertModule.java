@@ -2,7 +2,7 @@ package com.snet.smore.transformer.module;
 
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.common.util.FileUtil;
-import com.snet.smore.transformer.executor.CsvConvertExecutor;
+import com.snet.smore.transformer.executor.CustomConvertExecutor;
 import com.snet.smore.transformer.main.TransformerMain;
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,16 +16,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @Slf4j
-public class CsvConvertModule {
+public class CustomConvertModule {
     public void execute() {
-        int threadCnt = EnvManager.getProperty("transformer.thread.count", 1);
-
-        if (threadCnt < 1) {
-            log.error("Cannot convert value [transformer.thread.count]. " +
-                    "Job will be restarted.");
-            return;
-        }
-
         TransformerMain.setTotalCnt(0);
         TransformerMain.clearCurrCnt();
 
@@ -40,11 +32,11 @@ public class CsvConvertModule {
         log.info("Target files were found: {}", TransformerMain.getTotalCnt());
         long start = System.currentTimeMillis();
 
-        ExecutorService distributeService = Executors.newFixedThreadPool(threadCnt);
+        ExecutorService distributeService = Executors.newFixedThreadPool(1);
         List<Callable<String>> callables = new ArrayList<>();
 
         for (Path p : files) {
-            callables.add(new CsvConvertExecutor(p));
+            callables.add(new CustomConvertExecutor(p));
         }
 
         try {
@@ -56,4 +48,5 @@ public class CsvConvertModule {
             log.error("An error occurred while invoking distributed thread.");
         }
     }
+
 }

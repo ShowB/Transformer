@@ -29,16 +29,19 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class TransformerMain {
-    private static String agentType = Constant.AGENT_TYPE_TRANSFORMER;
-    private static String agentName = EnvManager.getProperty("transformer.name");
+    private String agentType = Constant.AGENT_TYPE_TRANSFORMER;
+    private String agentName = EnvManager.getProperty("transformer.name");
 
-    private static boolean isRequiredPropertiesUpdate = true;
-    private static boolean isFirstRun = true;
+    private boolean isRequiredPropertiesUpdate = true;
+    private boolean isFirstRun = true;
     private static Integer totalCnt = 0;
     private static Integer currCnt = 0;
 
-    private static ScheduledExecutorService mainService = Executors.newSingleThreadScheduledExecutor();
-    private static ScheduledExecutorService fileCompressService = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService mainService = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService fileCompressService = Executors.newSingleThreadScheduledExecutor();
+
+    private Class clazz;
+    private Object instance;
 
     public static Integer getTotalCnt() {
         return totalCnt;
@@ -61,11 +64,12 @@ public class TransformerMain {
     }
 
     public static void main(String[] args) {
-        mainService.scheduleWithFixedDelay(TransformerMain::runAgent, 1, 1, TimeUnit.SECONDS);
-        fileCompressService.scheduleWithFixedDelay(TransformerMain::runFileCompress, 3600, EnvManager.getProperty("transformer.backup.interval", 86400), TimeUnit.SECONDS);
+        TransformerMain main = new TransformerMain();
+        main.mainService.scheduleWithFixedDelay(main::runAgent, 1, 1, TimeUnit.SECONDS);
+        main.fileCompressService.scheduleWithFixedDelay(main::runFileCompress, 3600, EnvManager.getProperty("transformer.backup.interval", 86400), TimeUnit.SECONDS);
     }
 
-    private static void runAgent() {
+    private void runAgent() {
         try {
             final Agent agent = AgentUtil.getAgent(agentType, agentName);
 
@@ -75,6 +79,9 @@ public class TransformerMain {
             isRequiredPropertiesUpdate = Constant.YN_Y.equalsIgnoreCase(agent.getChangeYn());
 
             if (isRequiredPropertiesUpdate || isFirstRun) {
+                clazz = null;
+                instance = null;
+
                 EnvManager.reload();
                 agentName = EnvManager.getProperty("transformer.name");
                 loadConverter();
@@ -89,16 +96,27 @@ public class TransformerMain {
 
             TransformerMain.clearCurrCnt();
 
-            final String type = EnvManager.getProperty("transformer.source.file.type");
 
-            if ("bin".equalsIgnoreCase(type))
-                BinaryConvertModule.execute();
-            else if ("csv".equalsIgnoreCase(type))
-                CsvConvertModule.execute();
-            else if ("json".equalsIgnoreCase(type))
-                JsonConvertModule.execute();
-            else
-                log.error("Cannot convert value [{}]. Thread will be restarted.", "transformer.source.file.type");
+            if (clazz == null) {
+                String type = EnvManager.getProperty("transformer.source.file.type");
+
+                if ("bin".equalsIgnoreCase(type)) {
+                    clazz = BinaryConvertModule.class;
+                } else if ("csv".equalsIgnoreCase(type)) {
+                    clazz = CsvConvertModule.class;
+                } else if ("json".equalsIgnoreCase(type)) {
+                    clazz = JsonConvertModule.class;
+                } else {
+                    log.error("Cannot convert value [{}]. Thread will be restarted.", "transformer.source.file.type");
+                    return;
+                }
+            }
+
+            if (instance == null) {
+                instance = clazz.newInstance();
+            }
+
+            clazz.getMethod("execute").invoke(instance);
 
             if (isFirstRun)
                 isFirstRun = false;
@@ -108,7 +126,7 @@ public class TransformerMain {
         }
     }
 
-    public static void loadConverter() {
+    public void loadConverter() {
         File root = new File("converter");
         File[] files = root.listFiles();
 
@@ -134,7 +152,7 @@ public class TransformerMain {
         }
     }
 
-    private static void runFileCompress() {
+    private void runFileCompress() {
         try {
             Path sourceRoot = Paths.get(EnvManager.getProperty("transformer.source.file.dir"));
             Path targetRoot = Paths.get(EnvManager.getProperty("transformer.backup.file.dir"));
@@ -191,7 +209,7 @@ public class TransformerMain {
         }
     }
 
-    private static List<Path> findCmplFiles(Path root) {
+    private List<Path> findCmplFiles(Path root) {
         List<Path> files = new ArrayList<>();
 
         String glob = EnvManager.getProperty("transformer.source.file.glob", "*.*");
