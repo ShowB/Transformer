@@ -7,6 +7,7 @@ import com.snet.smore.common.util.AgentUtil;
 import com.snet.smore.common.util.EnvManager;
 import com.snet.smore.transformer.module.BinaryConvertModule;
 import com.snet.smore.transformer.module.CsvConvertModule;
+import com.snet.smore.transformer.module.CustomConvertModule;
 import com.snet.smore.transformer.module.JsonConvertModule;
 import lombok.extern.slf4j.Slf4j;
 
@@ -106,6 +107,8 @@ public class TransformerMain {
                     clazz = CsvConvertModule.class;
                 } else if ("json".equalsIgnoreCase(type)) {
                     clazz = JsonConvertModule.class;
+                } else if ("custom".equalsIgnoreCase(type)) {
+                    clazz = CustomConvertModule.class;
                 } else {
                     log.error("Cannot convert value [{}]. Thread will be restarted.", "transformer.source.file.type");
                     return;

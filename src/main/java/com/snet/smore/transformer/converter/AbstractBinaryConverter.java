@@ -71,4 +71,9 @@ public abstract class AbstractBinaryConverter {
     public Path getPath() {
         return this.path;
     }
+
+    public void clearBuffer() {
+        if (this.buffer != null)
+            this.buffer.clear();
+    }
 }

@@ -99,6 +99,8 @@ public class BinaryConvertExecutor extends AbstractExecutor {
                     }
                 }
 
+                converter.clearBuffer();
+
                 rowCnt = 0;
 
                 closeChannel();
